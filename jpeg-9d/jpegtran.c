@@ -142,6 +142,8 @@ int main(int argc, char **argv)
             // printf("%d\n", compnum);
             block_row_size = (size_t) sizeof(JCOEF)*DCTSIZE2*srcinfo.comp_info[compnum].width_in_blocks;
             //...iterate over rows,
+            // printf("%d\n", srcinfo.comp_info[compnum].height_in_blocks);
+            // printf("%d\n", srcinfo.comp_info[compnum].width_in_blocks);
             for (JDIMENSION rownum=0; rownum<srcinfo.comp_info[compnum].height_in_blocks; rownum++)
             {
                 row_ptrs[compnum] = (&dstinfo)->mem->access_virt_barray((j_common_ptr) &dstinfo, src_coef_arrays[compnum], rownum, (JDIMENSION) 1, FALSE);
@@ -153,7 +155,7 @@ int main(int argc, char **argv)
                     {
                         if (fh != NULL) // 32, 1, 1, 0, 0, 0
                         {
-                            fwrite (&row_ptrs[compnum][0][blocknum][i], sizeof (JDIMENSION), 1, fh);   
+                            fwrite (&row_ptrs[compnum][0][blocknum][i], sizeof(JDIMENSION), 1, fh);   
                         }
                     }
                 }
