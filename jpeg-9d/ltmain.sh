@@ -1053,7 +1053,7 @@ func_relative_path ()
           func_stripname "$func_relative_path_tlibdir" '' "$func_relative_path_tbindir"
           func_relative_path_tcancelled=$func_stripname_result
           if test -z "$func_relative_path_result"; then
-            func_relative_path_result=.
+            func_relative_path_result=.usage
           fi
           break
           ;;
