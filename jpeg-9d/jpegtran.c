@@ -97,20 +97,20 @@ int main(int argc, char **argv)
 
     /* Specify data source for decompression */
     jpeg_stdio_src(&srcinfo, fp);
-    // printf("pass jpef_stdio_src\n");
+    printf("pass jpef_stdio_src\n");
 
     /* Enable saving of extra markers that we want to copy */
     jcopy_markers_setup(&srcinfo, JCOPYOPT_ALL);
-    // printf("pass jcopy_markers_setup\n");
+    printf("pass jcopy_markers_setup\n");
 
     /* Read file header */
     (void) jpeg_read_header(&srcinfo, TRUE);
-    // printf("pass jpeg_read_header\n");
+    printf("pass jpeg_read_header\n");
 
     jtransform_request_workspace(&srcinfo, &transformoption);
     src_coef_arrays = jpeg_read_coefficients(&srcinfo);
     jpeg_copy_critical_parameters(&srcinfo, &dstinfo);
-    // printf("pass jpeg_read_coefficients\n");
+    printf("pass jpeg_read_coefficients\n");
 
     // added functions
     if (process_optiopn==-1)
