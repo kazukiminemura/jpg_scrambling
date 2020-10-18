@@ -18,3 +18,9 @@ ax2.imshow(dct_cb)
 ax3.imshow(dct_cr)  
 
 ![Extracted DCT](https://github.com/kazukiminemura/jpg_scrambling/blob/master/lena-dct.png "DCT values of lenna.jpg")
+
+
+# Scrambling
+DC Shuffling  
+Block Shuffling  
+![Extracted DCT](https://github.com/kazukiminemura/jpg_scrambling/blob/master/scrambled.png "Scrambled of lenna.jpg")
