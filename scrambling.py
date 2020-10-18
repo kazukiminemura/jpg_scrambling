@@ -198,25 +198,28 @@ if __name__ == "__main__":
 
     # block shuffle
     block_shuffle(dct_y)
+    block_shuffle(dct_cb)
+    block_shuffle(dct_cr)
 
     # # AC remove
     # ac_remove(dct_y)
     # ac_remove(dct_cb)
     # ac_remove(dct_cr)
 
-    dct_cb[:] = 0
-    dct_cr[:] = 0
+    # dct_cb[:] = 0
+    # dct_cr[:] = 0
 
 
     # Re-encode
     reencode_dct(args.filename, args.outfilename, dct_y, dct_cb, dct_cr, blocksizes)
 
-
+    ### matplotlib ###
     img = mpimg.imread(args.outfilename)
     imgplot = plt.imshow(img)
     plt.waitforbuttonpress()
     plt.close()
 
+    ### opencv ###
     # img = cv2.imread(args.outfilename)
     # cv2.imshow('ImageWindow',img)
     # cv2.waitKey()
