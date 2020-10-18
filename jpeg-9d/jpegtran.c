@@ -28,39 +28,47 @@ int main(int argc, char **argv)
   FILE *fp;
   char *input_file;
   char *output_file;
+  char *bin_file;
 
   int argn=0;
   char * arg;
   for (argn = 1; argn < argc; argn++) {
-      arg = argv[argn];
+    arg = argv[argn];
 
-      if (*arg != '-') {
-      /* Not a switch, must be a file name argument */
-        break;			/* else done parsing switches */
-      }
-      arg++;			/* advance past switch marker character */
+    if (*arg != '-') {
+    /* Not a switch, must be a file name argument */
+      break;			/* else done parsing switches */
+    }
+    arg++;			/* advance past switch marker character */
 
-      if (keymatch(arg, "d", 1)) {
-          printf("decode mode\n");
-          process_optiopn=0;
-          if (++argn >= argc)       /* advance to next argument */
-            usage();
-          input_file = argv[argn];
-          output_file = "dct.bin";
-      } else if (keymatch(arg, "e", 1)) {
-          printf("encode mode\n");
-          process_optiopn=1;
-          if (++argn >= argc)       /* advance to next argument */
-            usage();
-          input_file = argv[argn];
-      } else if (keymatch(arg, "o", 1)) {
-          if (++argn >= argc)       /* advance to next argument */
-            usage();
-          output_file = argv[argn];
-      }else
-      {
-          usage();
-      }
+    if (keymatch(arg, "d", 1)) {
+      printf("decode mode\n");
+      process_optiopn=0;
+      if (++argn >= argc)       /* advance to next argument */
+        usage();
+      input_file = argv[argn];
+      output_file = "dct.bin";
+    } else if (keymatch(arg, "e", 1)) {
+      printf("encode mode\n");
+      process_optiopn=1;
+
+      if (++argn >= argc)       /* advance to next argument */
+        usage();
+      input_file = argv[argn];
+
+    } else if (keymatch(arg, "o", 1)) {
+      if (++argn >= argc)       /* advance to next argument */
+        usage();
+      output_file = argv[argn];
+
+    } else if (keymatch(arg, "b", 1)) {
+      if (++argn >= argc)       /* advance to next argument */
+        usage();
+      bin_file = argv[argn];
+    }else
+    {
+      usage();
+    }
   }
 
   printf("%s\n", input_file);
@@ -90,25 +98,22 @@ int main(int argc, char **argv)
   dstinfo.err = jpeg_std_error(&jdsterr);
   jpeg_create_compress(&dstinfo);
 
-
-
-
   /* Specify data source for decompression */
   jpeg_stdio_src(&srcinfo, fp);
-  printf("pass jpef_stdio_src\n");
+  // printf("pass jpef_stdio_src\n");
 
   /* Enable saving of extra markers that we want to copy */
   jcopy_markers_setup(&srcinfo, JCOPYOPT_ALL);
-  printf("pass jcopy_markers_setup\n");
+  // printf("pass jcopy_markers_setup\n");
 
   /* Read file header */
   (void) jpeg_read_header(&srcinfo, TRUE);
-  printf("pass jpeg_read_header\n");
+  // printf("pass jpeg_read_header\n");
 
   jtransform_request_workspace(&srcinfo, &transformoption);
   src_coef_arrays = jpeg_read_coefficients(&srcinfo);
   jpeg_copy_critical_parameters(&srcinfo, &dstinfo);
-  printf("pass jpeg_read_coefficients\n");
+  // printf("pass jpeg_read_coefficients\n");
 
   // added functions
   if (process_optiopn==-1)
@@ -132,39 +137,42 @@ int main(int argc, char **argv)
           srcinfo.comp_info[compnum].height_in_blocks);
       }
 
-      printf("got dct buffer\n");
+      // printf("got dct buffer\n");
       FILE *fh = fopen (output_file, "wb");
       //For each component,
       for (JDIMENSION compnum=0; compnum<srcinfo.num_components; compnum++)
       {
-          // printf("%d\n", compnum);
-          block_row_size = (size_t) sizeof(JCOEF)*DCTSIZE2*srcinfo.comp_info[compnum].width_in_blocks;
-          //...iterate over rows,
-          // printf("%d\n", srcinfo.comp_info[compnum].height_in_blocks);
-          // printf("%d\n", srcinfo.comp_info[compnum].width_in_blocks);
-          for (JDIMENSION rownum=0; rownum<srcinfo.comp_info[compnum].height_in_blocks; rownum++)
-          {
-              row_ptrs[compnum] = (&dstinfo)->mem->access_virt_barray((j_common_ptr) &dstinfo, src_coef_arrays[compnum], rownum, (JDIMENSION) 1, FALSE);
-              //...and for each block in a row,
-              // for (JDIMENSION blocknum=0; blocknum<srcinfo.comp_info[compnum].width_in_blocks; blocknum++)
-              // {
-              //     //...iterate over DCT coefficients
-              //     for (JDIMENSION i=0; i<DCTSIZE2; i++)
-              //     {
-              //         if (fh != NULL) // 32, 1, 1, 0, 0, 0
-              //         {
-              //             // fwrite (&row_ptrs[compnum][0][blocknum][i], sizeof(JDIMENSION), 1, fh);   
-              //         }
-              //     }
-              // }
-          }
+        // printf("%d\n", compnum);
+        block_row_size = (size_t) sizeof(JCOEF)*DCTSIZE2*srcinfo.comp_info[compnum].width_in_blocks;
+        //...iterate over rows,
+        // printf("%d\n", srcinfo.comp_info[compnum].height_in_blocks);
+        // printf("%d\n", srcinfo.comp_info[compnum].width_in_blocks);
+        for (JDIMENSION rownum=0; rownum<srcinfo.comp_info[compnum].height_in_blocks; rownum++)
+        {
+        row_ptrs[compnum] = (&dstinfo)->mem->access_virt_barray((j_common_ptr) &dstinfo, src_coef_arrays[compnum], rownum, (JDIMENSION) 1, FALSE);
+        //...and for each block in a row,
+        for (JDIMENSION blocknum=0; blocknum<srcinfo.comp_info[compnum].width_in_blocks; blocknum++)
+        {
+        //...iterate over DCT coefficients
+        for (JDIMENSION i=0; i<DCTSIZE2; i++)
+        {
+            if (fh != NULL) // 32, 1, 1, 0, 0, 0
+            {
+            fwrite (&row_ptrs[compnum][0][blocknum][i], sizeof(JDIMENSION), 1, fh);   
+            }
+        }
+        }
+        }
       }
       fclose (fh);
-      printf("wrote to DCT values into %s\n", output_file);
+      // printf("wrote to DCT values into %s\n", output_file);
   }
 
   if (process_optiopn==1)
   {
+    printf("INPUT: %s\n", input_file);
+    printf("OUTPUT: %s\n", output_file);
+    printf("BIN: %s\n", bin_file);
       size_t block_row_size;
       JBLOCKARRAY coef_buffers[MAX_COMPONENTS];
       JBLOCKARRAY row_ptrs[MAX_COMPONENTS];
@@ -177,7 +185,7 @@ int main(int argc, char **argv)
           srcinfo.comp_info[compnum].height_in_blocks);
       }
       
-      FILE *fh = fopen (input_file, "rb");
+      FILE *fh = fopen (bin_file, "rb");
       for (JDIMENSION compnum=0; compnum<srcinfo.num_components; compnum++)
       {
           block_row_size = (size_t) sizeof(JCOEF)*DCTSIZE2*srcinfo.comp_info[compnum].width_in_blocks;
@@ -197,7 +205,7 @@ int main(int argc, char **argv)
           }
       }
       fclose(fh);
-      printf("loaded DCT values from %s\n", input_file);
+      // printf("loaded DCT values from %s\n", input_file);
 
       //Save the changes
       for (JDIMENSION compnum=0; compnum<srcinfo.num_components; compnum++)
@@ -213,7 +221,8 @@ int main(int argc, char **argv)
 
     /* ..when done with DCT, do this: */
     dst_coef_arrays = jtransform_adjust_parameters(&srcinfo, &dstinfo, src_coef_arrays, &transformoption);
-  //   dst_coef_arrays = src_coef_arrays;
+    // printf("adjusted parameters\n");
+  
 
     //And write everything back
     FILE *outfile_pointer;
@@ -228,6 +237,42 @@ int main(int argc, char **argv)
     jpeg_destroy_compress(&dstinfo);
     fclose(outfile_pointer);
   }
+
+  // printf("arraysize: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", 
+  //   srcinfo.cur_comp_info[0]->downsampled_height, 
+  //   srcinfo.cur_comp_info[0]->downsampled_width,
+  //   srcinfo.cur_comp_info[1]->downsampled_height, 
+  //   srcinfo.cur_comp_info[1]->downsampled_width,
+  //   srcinfo.cur_comp_info[2]->downsampled_height,
+  //   srcinfo.cur_comp_info[2]->downsampled_width,
+  //   srcinfo.cur_comp_info[0]->MCU_height,
+  //   srcinfo.cur_comp_info[0]->MCU_width,
+  //   srcinfo.cur_comp_info[1]->MCU_height,
+  //   srcinfo.cur_comp_info[1]->MCU_width,
+  //   srcinfo.cur_comp_info[2]->MCU_height,
+  //   srcinfo.cur_comp_info[2]->MCU_width,
+  //   srcinfo.cur_comp_info[0]->height_in_blocks,
+  //   srcinfo.cur_comp_info[0]->width_in_blocks,
+  //   srcinfo.cur_comp_info[1]->height_in_blocks,
+  //   srcinfo.cur_comp_info[1]->width_in_blocks,
+  //   srcinfo.cur_comp_info[2]->height_in_blocks,
+  //   srcinfo.cur_comp_info[2]->width_in_blocks
+  //   );
+
+  printf("arraysize: %d %d %d %d %d %d %d %d %d %d %d %d\n", 
+    srcinfo.cur_comp_info[0]->downsampled_height, 
+    srcinfo.cur_comp_info[0]->downsampled_width,
+    srcinfo.cur_comp_info[1]->downsampled_height, 
+    srcinfo.cur_comp_info[1]->downsampled_width,
+    srcinfo.cur_comp_info[2]->downsampled_height,
+    srcinfo.cur_comp_info[2]->downsampled_width,
+    srcinfo.cur_comp_info[0]->height_in_blocks,
+    srcinfo.cur_comp_info[0]->width_in_blocks,
+    srcinfo.cur_comp_info[1]->height_in_blocks,
+    srcinfo.cur_comp_info[1]->width_in_blocks,
+    srcinfo.cur_comp_info[2]->height_in_blocks,
+    srcinfo.cur_comp_info[2]->width_in_blocks
+    );
 
   (void) jpeg_finish_decompress(&srcinfo);
   jpeg_destroy_decompress(&srcinfo);

@@ -3,18 +3,28 @@ import struct
 import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
+import os
+import re
 
 # from array import array
 
 
 def get_dct(filename):
     # run jpeg decoder to generate dct.bin
-    process = subprocess.Popen(['./jpeg-9d/jpegtran -d {}'.format(filename)],
-                        stdout=subprocess.PIPE, 
-                        stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    # stdout, stderr
-    print(stdout)
+    command = os.path.join('./jpeg-9d','jpegtran') + " -d " + filename
+    process = subprocess.check_output(command, shell=True,  stderr=subprocess.STDOUT)
+    index = process.decode().find(": ")
+    imagearray = process.decode()[index+1:]
+
+    # print(imagearray.split())
+    [height_y, weidth_y, height_cb, weidth_cb, height_cr, weidth_cr, \
+        block_h_y, block_w_y, block_h_cb, block_w_cb, block_h_cr, block_w_cr,
+        ] \
+        = map(int,imagearray.split())
+    # print([height_y, weidth_y, height_cb, weidth_cb, height_cr, weidth_cr, \
+    #     block_h_y, block_w_y, block_h_cb, block_w_cb, block_h_cr, block_w_cr])
+
+    blocksizes = [block_h_y, block_w_y, block_h_cb, block_w_cb, block_h_cr, block_w_cr]
 
     '''
     Charactor, Byte-order
@@ -38,72 +48,117 @@ def get_dct(filename):
     dct_cb = []
     dct_cr = []
     with open('./dct.bin', mode='rb') as file: # b is important -> binary
-        for i in range(0, 512*512):
+        for i in range(0, height_y*weidth_y):
             stream = file.read(4)
             dct.append(struct.unpack('I', stream)[0])
-        for i in range(0, 256*256):
+        for i in range(0, height_cb*weidth_cb):
             stream = file.read(4)
             dct_cb.append(struct.unpack('I', stream)[0])
-        for i in range(0, 256*256):
+        for i in range(0, height_cr*weidth_cr):
             stream = file.read(4)
             dct_cr.append(struct.unpack('I', stream)[0])
 
-    dct_im = np.zeros((512,512))
+    dct_2d_y = np.zeros((height_y,weidth_y))
+    dct_2d_cb = np.zeros((height_cb,weidth_cb))
+    dct_2d_cr = np.zeros((height_cr,weidth_cr))
+
+    # print(len(dct_cb))
 
     blk_i=0
-    for m_row in range(0,64):
-        for m_col in range(0,64):
-            block = np.array(dct[blk_i*64:blk_i*64+64])
+    for m_row in range(0,block_h_y):
+        for m_col in range(0,block_w_y):
+            block = np.array(dct[blk_i*block_h_y:blk_i*block_w_y+block_h_y])
             blk_i += 1
             for h in range(0,8):
                 for w in range(0,8):
-                    dct_im[m_row*8+h, m_col*8 +w]=block[h*8+w]
+                    dct_2d_y[m_row*8+h, m_col*8 +w]=block[h*8+w]
 
-    plt.imshow(dct_im)
-    plt.waitforbuttonpress()
-    plt.close()
+    blk_i=0
+    for m_row in range(0,block_h_cb):
+        for m_col in range(0,block_w_cb):
+            # print(m_row, m_col)
+            block = np.array(dct_cb[blk_i*64:blk_i*64+64])
+            blk_i+=1
+            for h in range(0,8):
+                for w in range(0,8):
+                    # pass
+                    dct_2d_cb[m_row*8+h, m_col*8 +w]=block[h*8+w]
 
-    return dct
+    blk_i=0
+    for m_row in range(0,block_h_cr):
+        for m_col in range(0,block_w_cr):
+            block = np.array(dct_cr[blk_i*64:blk_i*64+64])
+            blk_i+=1
+            for h in range(0,8):
+                for w in range(0,8):
+                    dct_2d_cr[m_row*8+h, m_col*8 +w]=block[h*8+w]
+
+    return dct_2d_y, dct_2d_cb, dct_2d_cr, blocksizes 
+
+def reencode_dct(filename, outfilename, dct_y, dct_cb, dct_cr, blocksizes):
+    # print(blocksizes)
+    [block_h_y, block_w_y, block_h_cb, block_w_cb, block_h_cr, block_w_cr] = blocksizes
+
+    dct_y_out=[]
+    for m_row in range(0,block_h_y):
+        for m_col in range(0,block_w_y):
+            for h in range(0,8):
+                for w in range(0,8):
+                    dct_y_out.append(int(dct_y[m_row*8 + h, m_col*8 + w]))
+
+    dct_cb_out=[]
+    for m_row in range(0,block_h_cb):
+        for m_col in range(0,block_w_cb):
+            for h in range(0,8):
+                for w in range(0,8):
+                    dct_cb_out.append(int(dct_cb[m_row*8 + h, m_col*8 + w]))
+
+    dct_cr_out=[]
+    for m_row in range(0,block_h_cr):
+        for m_col in range(0,block_w_cr):
+            for h in range(0,8):
+                for w in range(0,8):
+                    dct_cr_out.append(int(dct_cr[m_row*8 + h, m_col*8 + w]))
+
+    with open("out.bin", mode='wb') as file:
+        for coef in dct_y_out:
+            file.write(struct.pack('I', coef))
+        for coef in dct_cb_out:
+            file.write(struct.pack('I', coef))
+        for coef in dct_cr_out:
+            file.write(struct.pack('I', coef))
+
+    # run jpeg decoder to generate dct.bin
+    command = os.path.join('./jpeg-9d','jpegtran') + " -e " + filename + " -o " + outfilename + " -b out.bin"
+    subprocess.check_output(command, shell=True,  stderr=subprocess.STDOUT)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('filename', type=str,
                         help='jpeg image')
-    # parser.add_argument('--sum', dest='accumulate', action='store_const',
-    #                     const=sum, default=max,
-    #                     help='sum the integers (default: find the max)')
+    parser.add_argument('outfilename', type=str,
+                        help='jpeg image')
 
     args = parser.parse_args()
-    print('input file: ' + args.filename)
-    
-    get_dct(args.filename)
+    # print('input file: ' + args.filename)
+    # print('output file: ' + args.outfilename)
+
+    # get DCT    
+    [dct_y, dct_cb, dct_cr, blocksizes] = get_dct(args.filename)
+
+    fig = plt.figure()
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    ax1.imshow(dct_y)
+    ax2.imshow(dct_cb)
+    ax3.imshow(dct_cr)
+    plt.waitforbuttonpress()
+    plt.close()
+
+    # Re-encode
+    reencode_dct(args.filename, args.outfilename, dct_y, dct_cb, dct_cr, blocksizes)
+
+
 
 
     
-
-
-    # print(dct)
-    # print(dct_im)
-
-
-    # processed = dct_im
-
-    # dct_out=[]
-    # for ind in range(0,32*32): # MCU index
-    #     m_row = int(ind / 32)
-    #     m_col = int(ind % 32)    
-    #     for b_row in range(0,2):
-    #         for b_col in range(0,2):
-    #             blk_i += 1
-    #             for h in range(0,8):
-    #                 for w in range(0,8):
-    #                     dct_out.append(int(processed[b_row*8+m_row*16 +h, b_col*8+m_col*16 +w]))
-
-    # with open("out.bin", mode='wb') as file:
-    #     for coef in dct_out:
-    #         file.write(struct.pack('I', coef))
-    #     for coef in dct_cb:
-    #         file.write(struct.pack('I', coef))
-    #     for coef in dct_cr:
-    #         file.write(struct.pack('I', coef))
