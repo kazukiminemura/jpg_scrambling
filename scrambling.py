@@ -1,10 +1,13 @@
 import argparse
 import struct
 import numpy as np
-import matplotlib.pyplot as plt
 import subprocess
 import os
 import re
+import random
+import cv2
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 # from array import array
 
@@ -132,6 +135,38 @@ def reencode_dct(filename, outfilename, dct_y, dct_cb, dct_cr, blocksizes):
     command = os.path.join('./jpeg-9d','jpegtran') + " -e " + filename + " -o " + outfilename + " -b out.bin"
     subprocess.check_output(command, shell=True,  stderr=subprocess.STDOUT)
 
+def dc_shuffle(dct):
+    DCs = np.array(dct[::8,::8])
+    random.shuffle(DCs)
+    dct[::8,::8] = DCs[:]
+
+def ac_remove(dct):
+    DCs = np.array(dct[::8,::8])
+    dct[:,:] = 0
+    dct[::8,::8] = DCs[:]
+
+def block_shuffle(dct):
+    # print(dct.shape)
+    [height, width] = dct.shape
+    block_h = int(height / 8)
+    block_w = int(width / 8)
+
+    shuffle_index = list(range(0,block_h*block_w))
+    random.shuffle(shuffle_index)
+    # print(shuffle_index)
+
+    blk_i=0
+    for m_row in range(0,block_h):
+        for m_col in range(0,block_w):
+            tmp = np.array(dct[m_row*8:m_row*8+8,m_col*8:m_col*8+8])
+            # print(tmp.shape)
+            m_row_t = int(shuffle_index[blk_i] / block_h)
+            m_col_t = shuffle_index[blk_i] % block_w
+            dct[m_row*8:m_row*8+8,m_col*8:m_col*8+8] = dct[m_row_t*8:m_row_t*8+8,m_col_t*8:m_col_t*8+8]
+            dct[m_row_t*8:m_row_t*8+8,m_col_t*8:m_col_t*8+8] = tmp[:,:]
+
+            blk_i+=1
+            
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -147,16 +182,45 @@ if __name__ == "__main__":
     # get DCT    
     [dct_y, dct_cb, dct_cr, blocksizes] = get_dct(args.filename)
 
-    fig = plt.figure()
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-    ax1.imshow(dct_y)
-    ax2.imshow(dct_cb)
-    ax3.imshow(dct_cr)
-    plt.waitforbuttonpress()
-    plt.close()
+    # fig = plt.figure()
+    # fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    # ax1.imshow(dct_y)
+    # ax2.imshow(dct_cb)
+    # ax3.imshow(dct_cr)
+    # plt.waitforbuttonpress()
+    # plt.close()
+
+
+    # DC shuffle
+    dc_shuffle(dct_y)
+    # dc_shuffle(dct_cb)
+    # dc_shuffle(dct_cr)
+
+    # block shuffle
+    block_shuffle(dct_y)
+
+    # # AC remove
+    # ac_remove(dct_y)
+    # ac_remove(dct_cb)
+    # ac_remove(dct_cr)
+
+    dct_cb[:] = 0
+    dct_cr[:] = 0
+
 
     # Re-encode
     reencode_dct(args.filename, args.outfilename, dct_y, dct_cb, dct_cr, blocksizes)
+
+
+    img = mpimg.imread(args.outfilename)
+    imgplot = plt.imshow(img)
+    plt.waitforbuttonpress()
+    plt.close()
+
+    # img = cv2.imread(args.outfilename)
+    # cv2.imshow('ImageWindow',img)
+    # cv2.waitKey()
+
 
 
 
