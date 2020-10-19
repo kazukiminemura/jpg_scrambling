@@ -24,3 +24,11 @@ ax3.imshow(dct_cr)
 DC Shuffling  
 Block Shuffling  
 ![Extracted DCT](https://github.com/kazukiminemura/jpg_scrambling/blob/master/scrambled.png "Scrambled of lenna.jpg")
+
+
+# Sketch attack
+Engergy of AC coefficient  
+Nonzero count  
+Position of last nonzero  
+
+![Sketch attacked images](https://github.com/kazukiminemura/jpg_scrambling/blob/master/eac_ncc_plz.png "Sketched image")
