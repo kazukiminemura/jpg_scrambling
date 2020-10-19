@@ -9,7 +9,7 @@ import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-# from array import array
+from itertools import chain
 
 
 def get_dct(filename):
@@ -167,6 +167,62 @@ def block_shuffle(dct):
 
             blk_i+=1
             
+def energy_ac(dct):
+    [height, width] = dct.shape
+    block_h = int(height / 8)
+    block_w = int(width / 8) 
+    EAC = np.zeros((block_h, block_w))
+
+    for m_row in range(0,block_h):
+        for m_col in range(0,block_w):
+            block = np.array(dct[m_row*8+1:m_row*8+8,m_col*8+1:m_col*8+8])
+            EAC[m_row, m_col] = block.sum()
+
+    return EAC
+
+def nonzero_count(dct):
+    [height, width] = dct.shape
+    block_h = int(height / 8)
+    block_w = int(width / 8) 
+    NCC = np.zeros((block_h, block_w))
+
+    for m_row in range(0,block_h):
+        for m_col in range(0,block_w):
+            block = np.array(dct[m_row*8+1:m_row*8+8,m_col*8+1:m_col*8+8])
+            NCC[m_row, m_col] = (block>0).sum()
+
+    return NCC
+
+
+def position_last_nonzero(dct):
+    [height, width] = dct.shape
+    block_h = int(height / 8)
+    block_w = int(width / 8) 
+    PLZ = np.zeros((block_h, block_w))
+
+    ZIG = np.array([0,  1,  5,  6,  14, 15, 27, 28,
+                    2,  4,  7,  13, 16, 26, 29, 42,
+                    3,  8,  12, 17, 25, 30, 41, 43,
+                    9,  11, 18, 24, 31, 40, 44,53,
+                    10, 19, 23, 32, 39, 45, 52,54,
+                    20, 22, 33, 38, 46, 51, 55,60,
+                    21, 34, 37, 47, 50, 56, 59,61,
+                    35, 36, 48, 49, 57, 58, 62,63])
+
+    array_1D = np.zeros(64)
+    for m_row in range(0,block_h):
+        for m_col in range(0,block_w):
+            block = np.array(dct[m_row*8:m_row*8+8,m_col*8:m_col*8+8])
+            block_1D = block.flatten()
+            block_1D[-1] = 0
+            # print(block_1D)
+            for idx in range(0,64):
+                array_1D[idx] = block_1D[ZIG[idx]]
+            
+            last = array_1D.nonzero()[0]
+            PLZ[m_row, m_col] = last[-1]
+
+    return PLZ
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -189,6 +245,26 @@ if __name__ == "__main__":
     # ax3.imshow(dct_cr)
     # plt.waitforbuttonpress()
     # plt.close()
+
+    EAC = energy_ac(dct_y)
+    # imgplot = plt.imshow(EAC)
+    # plt.waitforbuttonpress()
+    # plt.close()
+
+    NCC = nonzero_count(dct_y)
+    # imgplot = plt.imshow(NCC)
+    # plt.waitforbuttonpress()
+    # plt.close()
+
+    PLZ = position_last_nonzero(dct_y)
+
+    fig = plt.figure()
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    ax1.imshow(EAC)
+    ax2.imshow(NCC)
+    ax3.imshow(PLZ)
+    plt.waitforbuttonpress()
+    plt.close()
 
 
     # DC shuffle
